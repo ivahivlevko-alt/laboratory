@@ -37,7 +37,10 @@ class BookingViewSet(viewsets.ModelViewSet):
     permission_classes = (IsAuthenticated,)
 
     def get_queryset(self):
-        return Booking.objects.filter(owner=self.request.user).select_related("lab")
+        queryset = Booking.objects.filter(owner=self.request.user).select_related("lab")
+        if self.action in ("update", "partial_update", "destroy"):
+            queryset = queryset.select_for_update()
+        return queryset
 
     def perform_create(self, serializer):
         serializer.save(
@@ -66,6 +69,11 @@ class BookingViewSet(viewsets.ModelViewSet):
     def confirm(self, request, pk=None):
         try:
             booking = confirm_order(int(pk), request.user)
+        except ValueError:
+            return Response(
+                {"detail": "Заявку не знайдено."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
         except Http404:
             return Response({"detail": "Заявку не знайдено."}, status=404)
         except OrderConflict as exc:
@@ -78,6 +86,11 @@ class BookingViewSet(viewsets.ModelViewSet):
     def cancel(self, request, pk=None):
         try:
             booking = cancel_order(int(pk), request.user)
+        except ValueError:
+            return Response(
+                {"detail": "Заявку не знайдено."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
         except Http404:
             return Response({"detail": "Заявку не знайдено."}, status=404)
         except OrderConflict as exc:
