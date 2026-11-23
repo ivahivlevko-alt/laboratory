@@ -1,5 +1,5 @@
-"""Спільний клієнт для attack_open.py і race.py. Лише стандартна бібліотека,
-тож працює на будь-якому ноутбуці з Python 3.10+, зокрема на Windows."""
+"""РЎРїС–Р»СЊРЅРёР№ РєР»С–С”РЅС‚ РґР»СЏ attack_open.py С– race.py. Р›РёС€Рµ СЃС‚Р°РЅРґР°СЂС‚РЅР° Р±С–Р±Р»С–РѕС‚РµРєР°,
+С‚РѕР¶ РїСЂР°С†СЋС” РЅР° Р±СѓРґСЊ-СЏРєРѕРјСѓ РЅРѕСѓС‚Р±СѓС†С– Р· Python 3.10+, Р·РѕРєСЂРµРјР° РЅР° Windows."""
 import json
 import threading
 import urllib.error
@@ -12,7 +12,7 @@ ALLOWED_CONTRACT_KEYS = {
 
 
 class _NoRedirect(urllib.request.HTTPRedirectHandler):
-    """Редірект — теж відповідь сервера, його треба побачити, а не пройти."""
+    """Р РµРґС–СЂРµРєС‚ вЂ” С‚РµР¶ РІС–РґРїРѕРІС–РґСЊ СЃРµСЂРІРµСЂР°, Р№РѕРіРѕ С‚СЂРµР±Р° РїРѕР±Р°С‡РёС‚Рё, Р° РЅРµ РїСЂРѕР№С‚Рё."""
 
     def redirect_request(self, *args, **kwargs):
         return None
@@ -26,7 +26,7 @@ def load_contract(path):
         contract = json.load(f)
     missing = ALLOWED_CONTRACT_KEYS - contract.keys()
     if missing:
-        raise SystemExit(f"У {path} бракує ключів: {', '.join(sorted(missing))}")
+        raise SystemExit(f"РЈ {path} Р±СЂР°РєСѓС” РєР»СЋС‡С–РІ: {', '.join(sorted(missing))}")
     return contract
 
 
@@ -36,10 +36,10 @@ class Api:
         self.base = contract["base_url"].rstrip("/")
         self._tokens = {}
 
-    # --- низький рівень ---------------------------------------------------
+    # --- РЅРёР·СЊРєРёР№ СЂС–РІРµРЅСЊ ---------------------------------------------------
 
     def request(self, method, path, body=None, token=None, raw=None, headers=None):
-        """Повертає (код, розібране тіло або текст). Код 0 — сервер недоступний."""
+        """РџРѕРІРµСЂС‚Р°С” (РєРѕРґ, СЂРѕР·С–Р±СЂР°РЅРµ С‚С–Р»Рѕ Р°Р±Рѕ С‚РµРєСЃС‚). РљРѕРґ 0 вЂ” СЃРµСЂРІРµСЂ РЅРµРґРѕСЃС‚СѓРїРЅРёР№."""
         url = path if path.startswith("http") else self.base + path
         data = raw if raw is not None else (json.dumps(body).encode() if body is not None else None)
         req = urllib.request.Request(url, data=data, method=method)
@@ -61,7 +61,7 @@ class Api:
         except ValueError:
             return status, payload.decode(errors="replace")[:300]
 
-    # --- предметний рівень -------------------------------------------------
+    # --- РїСЂРµРґРјРµС‚РЅРёР№ СЂС–РІРµРЅСЊ -------------------------------------------------
 
     def token(self, user):
         if user not in self._tokens:
@@ -69,8 +69,8 @@ class Api:
             code, data = self.request("POST", self.c["token_url"],
                                       {"username": user, "password": password})
             if code != 200 or not isinstance(data, dict) or "access" not in data:
-                raise SystemExit(f"Не вдалося отримати токен для {user}: {code} {data}\n"
-                                 "Перевірте token_url, users у contract.json і чи запущено seed_attack.")
+                raise SystemExit(f"РќРµ РІРґР°Р»РѕСЃСЏ РѕС‚СЂРёРјР°С‚Рё С‚РѕРєРµРЅ РґР»СЏ {user}: {code} {data}\n"
+                                 "РџРµСЂРµРІС–СЂС‚Рµ token_url, users Сѓ contract.json С– С‡Рё Р·Р°РїСѓС‰РµРЅРѕ seed_attack.")
             self._tokens[user] = data["access"]
         return self._tokens[user]
 
@@ -87,7 +87,7 @@ class Api:
 
     @staticmethod
     def as_list(data):
-        """Список — або голий, або з пагінацією {"results": [...]}."""
+        """РЎРїРёСЃРѕРє вЂ” Р°Р±Рѕ РіРѕР»РёР№, Р°Р±Рѕ Р· РїР°РіС–РЅР°С†С–С”СЋ {"results": [...]}."""
         if isinstance(data, dict) and isinstance(data.get("results"), list):
             return data["results"]
         return data if isinstance(data, list) else []
@@ -98,8 +98,8 @@ class Api:
     def left(self, item_id):
         code, data = self.request("GET", self.item_path(item_id))
         if code != 200 or not isinstance(data, dict) or self.c["left_field"] not in data:
-            raise SystemExit(f"GET {self.item_path(item_id)} → {code}, поля "
-                             f"'{self.c['left_field']}' немає: {data}")
+            raise SystemExit(f"GET {self.item_path(item_id)} в†’ {code}, РїРѕР»СЏ "
+                             f"'{self.c['left_field']}' РЅРµРјР°С”: {data}")
         return data[self.c["left_field"]]
 
     def order_body(self, item_id, qty, **override):
@@ -115,8 +115,8 @@ class Api:
 
 
 def fire_at_once(calls):
-    """Запускає всі виклики в окремих потоках і відпускає їх одночасно через Barrier.
-    Повертає список результатів у тому самому порядку."""
+    """Р—Р°РїСѓСЃРєР°С” РІСЃС– РІРёРєР»РёРєРё РІ РѕРєСЂРµРјРёС… РїРѕС‚РѕРєР°С… С– РІС–РґРїСѓСЃРєР°С” С—С… РѕРґРЅРѕС‡Р°СЃРЅРѕ С‡РµСЂРµР· Barrier.
+    РџРѕРІРµСЂС‚Р°С” СЃРїРёСЃРѕРє СЂРµР·СѓР»СЊС‚Р°С‚С–РІ Сѓ С‚РѕРјСѓ СЃР°РјРѕРјСѓ РїРѕСЂСЏРґРєСѓ."""
     barrier = threading.Barrier(len(calls))
     results = [None] * len(calls)
 
