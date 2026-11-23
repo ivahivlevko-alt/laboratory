@@ -54,6 +54,8 @@ DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.sqlite3",
         "NAME": BASE_DIR / "db.sqlite3",
+        # File-backed SQLite allows concurrency tests to exercise write locks.
+        "TEST": {"NAME": BASE_DIR / "test_db.sqlite3"},
         "OPTIONS": {
             # Одночасні записи в SQLite чекають своєї черги до 20 с, а не падають
             # одразу з «database is locked» → 500.

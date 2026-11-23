@@ -33,7 +33,11 @@ class OrderRejected(OrderError):
 def _get_owned_order(order_id: int, user) -> Booking:
     """Заявка видима лише власнику; чужу віддаємо як 404, не розкриваючи існування."""
     try:
-        return Booking.objects.select_related("lab").get(pk=order_id, owner=user)
+        return (
+            Booking.objects.select_for_update()
+            .select_related("lab")
+            .get(pk=order_id, owner=user)
+        )
     except Booking.DoesNotExist as exc:
         raise Http404("Заявку не знайдено.") from exc
 
@@ -71,24 +75,35 @@ def confirm_order(order_id: int, user) -> Booking:
 
 
 def cancel_order(order_id: int, user) -> Booking:
-    """confirmed → cancelled із поверненням місць. cancel із draft/cancelled → 409."""
+    """Скасовує draft без зміни залишку або confirmed із поверненням місць."""
     try:
         with transaction.atomic():
             order = _get_owned_order(order_id, user)
 
-            # Повертаємо місця лише з confirmed: cancelled — кінцевий стан,
-            # а draft ресурс не займав.
-            released = Booking.objects.filter(
+            if order.status not in (
+                Booking.Status.DRAFT,
+                Booking.Status.CONFIRMED,
+            ):
+                raise OrderConflict(
+                    "Скасувати можна лише заявку у стані draft або confirmed."
+                )
+
+            # Статус є умовою переходу, тож лише один конкурентний cancel
+            # може перевести заявку в cancelled і повернути зайняті місця.
+            cancelled = Booking.objects.filter(
                 pk=order.pk,
                 owner=user,
-                status=Booking.Status.CONFIRMED,
+                status=order.status,
             ).update(status=Booking.Status.CANCELLED)
-            if released != 1:
-                raise OrderConflict("Скасувати можна лише підтверджену заявку (confirmed).")
+            if cancelled != 1:
+                raise OrderConflict("Заявка вже змінила стан.")
 
-            Lab.objects.filter(pk=order.lab_id).update(
-                seats=F("seats") + order.quantity
-            )
+            if order.status == Booking.Status.CONFIRMED:
+                returned = Lab.objects.filter(pk=order.lab_id).update(
+                    seats=F("seats") + order.quantity
+                )
+                if returned != 1:
+                    raise OrderRejected("Не вдалося повернути місця до каталогу.")
 
             order.refresh_from_db()
             return order
