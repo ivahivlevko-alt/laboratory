@@ -1,14 +1,21 @@
 """Налаштування стартового скелета хакатону. Тут уже все, що не є змістом дня."""
+import os
+import secrets
 from datetime import timedelta
 from pathlib import Path
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-SECRET_KEY = "hackathon-only-not-a-secret"
-DEBUG = True
+SECRET_KEY = os.environ.get("DJANGO_SECRET_KEY") or secrets.token_urlsafe(50)
+DEBUG = os.environ.get("DJANGO_DEBUG", "").lower() in {"1", "true", "yes", "on"}
 
-# Без цього запит на http://<ip>:8000 з іншої машини отримує 400 DisallowedHost.
-ALLOWED_HOSTS = ["*"]
+ALLOWED_HOSTS = [
+    host.strip()
+    for host in os.environ.get(
+        "DJANGO_ALLOWED_HOSTS", "localhost,127.0.0.1,testserver"
+    ).split(",")
+    if host.strip()
+]
 
 INSTALLED_APPS = [
     "django.contrib.admin",
@@ -63,6 +70,8 @@ DATABASES = {
             # під одночасними запитами.
             "transaction_mode": "IMMEDIATE",
         },
+        # A file-backed test DB exercises the same SQLite locking behavior as the app DB.
+        "TEST": {"NAME": BASE_DIR / "test_db.sqlite3"},
     }
 }
 
