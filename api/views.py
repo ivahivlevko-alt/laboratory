@@ -65,7 +65,7 @@ class BookingViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=("post",))
     def confirm(self, request, pk=None):
         try:
-            booking = confirm_order(int(pk), request.user)
+            booking = confirm_order(pk, request.user)
         except Http404:
             return Response({"detail": "Заявку не знайдено."}, status=404)
         except OrderConflict as exc:
@@ -77,7 +77,7 @@ class BookingViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=("post",))
     def cancel(self, request, pk=None):
         try:
-            booking = cancel_order(int(pk), request.user)
+            booking = cancel_order(pk, request.user)
         except Http404:
             return Response({"detail": "Заявку не знайдено."}, status=404)
         except OrderConflict as exc:

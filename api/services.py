@@ -30,15 +30,15 @@ class OrderRejected(OrderError):
     """Некоректна операція з даними (наприклад, бракує місць) → 400."""
 
 
-def _get_owned_order(order_id: int, user) -> Booking:
+def _get_owned_order(order_id: int | str, user) -> Booking:
     """Заявка видима лише власнику; чужу віддаємо як 404, не розкриваючи існування."""
     try:
         return Booking.objects.select_related("lab").get(pk=order_id, owner=user)
-    except Booking.DoesNotExist as exc:
+    except (Booking.DoesNotExist, TypeError, ValueError) as exc:
         raise Http404("Заявку не знайдено.") from exc
 
 
-def confirm_order(order_id: int, user) -> Booking:
+def confirm_order(order_id: int | str, user) -> Booking:
     """draft → confirmed із зайняттям місць. Повторний confirm → OrderConflict."""
     try:
         with transaction.atomic():
@@ -70,7 +70,7 @@ def confirm_order(order_id: int, user) -> Booking:
         raise OrderRejected("Операція порушила цілісність залишку.") from exc
 
 
-def cancel_order(order_id: int, user) -> Booking:
+def cancel_order(order_id: int | str, user) -> Booking:
     """confirmed → cancelled із поверненням місць. cancel із draft/cancelled → 409."""
     try:
         with transaction.atomic():

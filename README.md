@@ -19,6 +19,11 @@ python manage.py runserver
 
 Потрібні Python 3.10+ і Django 5.1+.
 
+`DEBUG` за замовчуванням вимкнений. Для курсового стенда, доступного з інших
+машин, задайте `DJANGO_ALLOWED_HOSTS` списком імен хостів через кому. У production
+також задайте стабільний випадковий `DJANGO_SECRET_KEY`; без нього ключ генерується
+тимчасово під час старту процесу, тож токени стануть недійсними після перезапуску.
+
 ## Хто що пише
 
 | Роль | Файли |
@@ -128,5 +133,4 @@ curl -s http://127.0.0.1:8000/api/v1/labs/1/ -H "Authorization: Bearer $TOKEN"
 # 9. повторний cancel -> 409
 curl -s -i -X POST http://127.0.0.1:8000/api/v1/bookings/1/cancel/ -H "Authorization: Bearer $TOKEN"
 ```
-
 
