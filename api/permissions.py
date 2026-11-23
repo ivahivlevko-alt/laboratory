@@ -1,6 +1,9 @@
-"""Роль «Доступ». Власні класи прав.
-
-Заявку бачить і змінює лише її власник. Пам'ятайте: `has_object_permission`
-не викликається для списку — список фільтрує `get_queryset`.
-"""
-from rest_framework import permissions  # noqa: F401
+from rest_framework import permissions
+class IsOwner(permissions.BasePermission):
+    message = "Ця заявка належить іншому користувачу."
+    def has_object_permission(self, request, view, obj):
+        return bool(
+            request.user
+            and request.user.is_authenticated
+            and obj.owner_id == request.user.pk
+        )
