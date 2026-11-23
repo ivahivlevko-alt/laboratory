@@ -83,9 +83,50 @@ python tools/race.py --help
 
 ## Наш домен
 
-*Заповнити:* домен, обмежений ресурс, адреси каталогу й заявок, поля.
+Домен 8: «Лабораторія — місця на лабораторну роботу».
+Обмежений ресурс — вільні місця на лабораторній роботі.
+
+- Каталог: `/api/v1/labs/` (поля `id`, `title`, `description`, `seats`)
+- Заявки: `/api/v1/bookings/` (поля `id`, `owner`, `lab`, `quantity`, `status`, `created_at`, `updated_at`)
+- Дії: `POST /api/v1/bookings/<id>/confirm/` і `POST /api/v1/bookings/<id>/cancel/`
+- `status`: `draft` / `confirmed` / `cancelled`. Місця зайняті лише тоді, коли заявка `confirmed`.
 
 ## Сценарій у curl
 
-*Заповнити:* вхід → каталог → заявка → `confirm` → залишок зменшився → повторний
-`confirm` `409` → `cancel` → залишок повернувся.
+```bash
+python manage.py seed_attack
+python manage.py runserver
+
+# 1. токен
+TOKEN=$(curl -s -X POST http://127.0.0.1:8000/api/v1/auth/token/ \
+  -H "Content-Type: application/json" \
+  -d '{"username":"attacker1","password":"attack-pass-1"}' | jq -r .access)
+
+# 2. каталог (у лабораторної №1 seats = 1)
+curl -s http://127.0.0.1:8000/api/v1/labs/ -H "Authorization: Bearer $TOKEN"
+
+# 3. створити заявку (draft)
+curl -s -X POST http://127.0.0.1:8000/api/v1/bookings/ \
+  -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
+  -d '{"lab":1,"quantity":1}'
+
+# 4. підтвердити
+curl -s -X POST http://127.0.0.1:8000/api/v1/bookings/1/confirm/ -H "Authorization: Bearer $TOKEN"
+
+# 5. місця зменшились (seats = 0)
+curl -s http://127.0.0.1:8000/api/v1/labs/1/ -H "Authorization: Bearer $TOKEN"
+
+# 6. повторний confirm -> 409
+curl -s -i -X POST http://127.0.0.1:8000/api/v1/bookings/1/confirm/ -H "Authorization: Bearer $TOKEN"
+
+# 7. cancel
+curl -s -X POST http://127.0.0.1:8000/api/v1/bookings/1/cancel/ -H "Authorization: Bearer $TOKEN"
+
+# 8. місця повернулись (seats = 1)
+curl -s http://127.0.0.1:8000/api/v1/labs/1/ -H "Authorization: Bearer $TOKEN"
+
+# 9. повторний cancel -> 409
+curl -s -i -X POST http://127.0.0.1:8000/api/v1/bookings/1/cancel/ -H "Authorization: Bearer $TOKEN"
+```
+
+
