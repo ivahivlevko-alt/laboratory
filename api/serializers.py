@@ -14,11 +14,12 @@ class LabSerializer(serializers.ModelSerializer):
 
 class BookingSerializer(serializers.ModelSerializer):
     quantity = serializers.IntegerField(min_value=1, max_value=2147483647)
+    lab_title = serializers.CharField(source="lab.title", read_only=True)
 
     class Meta:
         model = Booking
         fields = (
-            "id", "owner", "lab", "quantity", "status",
+            "id", "owner", "lab", "lab_title", "quantity", "status",
             "created_at", "updated_at",
         )
         read_only_fields = (
